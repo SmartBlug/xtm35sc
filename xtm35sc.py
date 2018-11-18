@@ -5,13 +5,32 @@ import minimalmodbus
 import paho.mqtt.client as paho
 import time
 
+version = "v1.0"
+help = "xtm35sc.py address [-h] [-i register] [-r {voltage|frequency|current|power|pf}] [-d deviceport] [-m mqttaddress] [-p mqttport] [-t mqtttopic] [-n] [-v]"
+
+def usage():
+	#help = 'xtm35sc.py address -i <register> -r <[voltage,frequency,current,power,pf]> -d <device port> -m <mqtt addr> -p <mqtt port> -t <topic> -n -v'
+	print("xtm35sc.py is a Modbus/RS485 driver for xtm35sc energy meter with mqtt publishing option")
+	print("xtm35sc.py version",version,"\n")
+	print("Usage:",help,"\n")
+	print("address         : device address on RS485 bus.")
+	print("-h,--help       : display this message.")
+	print("-i,--id         : device register by id.")
+	print("-r,--register   : device register by name. This could be \"voltage\",\"frequency\",\"current\",\"power\" or \"pf\".")
+	print("-d,--deviceport : deviceport. Default is /dev/ttyUSB0.")
+	print("-m,--mqtt       : mqtt brocker address. This enable mqtt message.")
+	print("-p,--port       : mqtt brocker port. Default is 1883")
+	print("-t,--topic      : mqtt topic. Default is \"xtm35sc/{ADDR}\" and \"{ADDR}\" will be replaced by device address.")
+	print("-n,--numeric    : display only numeric results.")
+	print("-v,--verbose    : activate verbose mode.\n")
+	
 def main(argv):
 
-	help = 'xtm35sc.py address -i <register> -r <[voltage,frequency,current,power,pf]> -m <mqtt addr> -p <mqtt port> -t <topic> -n -d'
+	deviceport = '/dev/ttyUSB0'
 	registerid = -1
 	numeric = False
 	register = ""
-	debug = False
+	verbose = False
 	mqtt = False
 	mqttport = 1883
 	mqtttopic = "xtm35sc/{ADDR}"
@@ -20,16 +39,20 @@ def main(argv):
 		print(help)
 		sys.exit(2)
 	else:
-		address = int(argv[0])
+		try:
+			address = int(argv[0])
+		except:
+			print(help)
+			sys.exit(2)
 		
 	try:
-		opts, args = getopt.getopt(argv[1:],"hi:r:t:m:p:nd",["iid=","rregister=","ttopic","mmqtt","pport","nnumeric","debug"])
+		opts, args = getopt.getopt(argv[1:],"hi:r:d:t:m:p:nv",["help","id=","register=","deviceport=","topic=","mqtt=","port=","numeric","verbose"])
 	except getopt.GetoptError:
 		print(help)
 		sys.exit(2)
 	for opt, arg in opts:
-		if opt == '-h':
-			print(help)
+		if opt in ("-h", "--help"):
+			usage()
 			sys.exit()
 		elif opt in ("-i", "--id"):
 			registerid = int(arg)
@@ -44,18 +67,24 @@ def main(argv):
 			mqtttopic = arg
 		elif opt in ("-n", "--numeric"):
 			numeric = True
-		elif opt in ("-d", "--debug"):
-			debug = True
+		elif opt in ("-v", "--verbose"):
+			verbose = True
+		elif opt in ("-d", "--deviceport"):
+			deviceport = arg
 
-	rs485 = minimalmodbus.Instrument('/dev/ttyUSB0', address)
-	rs485.serial.baudrate = 9600
-	rs485.serial.bytesize = 8
-	rs485.serial.parity = 'E'
-	rs485.serial.stopbits = 1
-	rs485.serial.timeout = 0.5
-	rs485.debug = debug
-	rs485.mode = minimalmodbus.MODE_RTU
-
+	try:
+		rs485 = minimalmodbus.Instrument(deviceport, address)
+		rs485.serial.baudrate = 9600
+		rs485.serial.bytesize = 8
+		rs485.serial.parity = 'E'
+		rs485.serial.stopbits = 1
+		rs485.serial.timeout = 0.5
+		rs485.debug = verbose
+		rs485.mode = minimalmodbus.MODE_RTU
+	except:
+		print("Can't access to dev port",deviceport)
+		sys.exit(2)
+		
 	try:
 		if mqtt:
 			mqttclient = paho.Client("xtm35sc")
