@@ -6,8 +6,7 @@ import paho.mqtt.client as paho
 import time
 
 version = "v1.0"
-help = "xtm35sc.py address [-h] [-i register] [-r {voltage|frequency|current|power|pf}] [-d deviceport] [-m mqttaddress] [-p mqttport] [-t mqtttopic] [-n] [-v]"
-
+help = "xtm35sc.py address [-h] [-i register] [-r {voltage|frequency|current|power|pf}] [-d deviceport] [-m mqttaddress] [-p mqttport] [-P mqtttopicprefix] [-t mqtttopic] [-n] [-v]"
 def usage():
 	#help = 'xtm35sc.py address -i <register> -r <[voltage,frequency,current,power,pf]> -d <device port> -m <mqtt addr> -p <mqtt port> -t <topic> -n -v'
 	print("xtm35sc.py is a Modbus/RS485 driver for xtm35sc energy meter with mqtt publishing option")
@@ -20,20 +19,34 @@ def usage():
 	print("-d,--deviceport : deviceport. Default is /dev/ttyUSB0.")
 	print("-m,--mqtt       : mqtt brocker address. This enable mqtt message.")
 	print("-p,--port       : mqtt brocker port. Default is 1883")
-	print("-t,--topic      : mqtt topic. Default is \"xtm35sc/{ADDR}\" and \"{ADDR}\" will be replaced by device address.")
+	print("-P,--prefix     : mqtt prefix topic. Default is \"\\xtm35sc\"")
+	print("-t,--topic      : mqtt topic. Default is \"{PREFIX}/{ADDR}\" and \"{ADDR}\" will be replaced by device address.")
 	print("-n,--numeric    : display only numeric results.")
 	print("-v,--verbose    : activate verbose mode.\n")
+
+def readFloat(rs485,addr):
+	retry = 0;
+	while (retry<5):
+		retry += 1
+		try:	
+			return rs485.read_float(addr, functioncode=4, numberOfRegisters=2)
+		except:
+			print('retry',addr)
+			time.sleep(0.5)
+	print("Can't connect to device address",addr)
+	return -1
 	
 def main(argv):
 
 	deviceport = '/dev/ttyUSB0'
-	registerid = -1
 	numeric = False
-	register = ""
 	verbose = False
 	mqtt = False
 	mqttport = 1883
-	mqtttopic = "xtm35sc/{ADDR}"
+	mqtttopicprefix = "/xtm35sc"
+	mqtttopic = "{PREFIX}/{ADDR}"
+	registerid = -1
+	register = ""
 	
 	if len(argv)==0:
 		print(help)
@@ -46,7 +59,7 @@ def main(argv):
 			sys.exit(2)
 		
 	try:
-		opts, args = getopt.getopt(argv[1:],"hi:r:d:t:m:p:nv",["help","id=","register=","deviceport=","topic=","mqtt=","port=","numeric","verbose"])
+		opts, args = getopt.getopt(argv[1:],"hi:r:d:P:t:m:p:nv",["help","id=","register=","deviceport=","prefix=","topic=","mqtt=","port=","numeric","verbose"])
 	except getopt.GetoptError:
 		print(help)
 		sys.exit(2)
@@ -63,6 +76,8 @@ def main(argv):
 			mqtt = arg.lower()
 		elif opt in ("-p", "--port"):
 			mqttport = int(arg)
+		elif opt in ("-P", "--prefix"):
+			mqtttopicprefix = arg			
 		elif opt in ("-t", "--topic"):
 			mqtttopic = arg
 		elif opt in ("-n", "--numeric"):
@@ -88,54 +103,72 @@ def main(argv):
 	try:
 		if mqtt:
 			mqttclient = paho.Client("xtm35sc")
-			mqttclient.connect(mqtt,mqttport)
+			mqttclient.connect(mqtt,mqttport)			
+			mqtttopic = mqtttopic.replace("{PREFIX}",str(mqtttopicprefix))
 			mqtttopic = mqtttopic.replace("{ADDR}",str(address))
+		else:
+			mqtttopic = False
 	except:
 		print("Can't connect to",mqtt,":",mqttport)
 
-	try:	
-		if (registerid==-1) or (registerid==0) or (register=="voltage"):
-			Volts = rs485.read_float(0, functioncode=4, numberOfRegisters=2)
+	alive = 0;
+	if (registerid==-1) or (registerid==0) or (register=="voltage"):
+		#Volts = rs485.read_float(0, functioncode=4, numberOfRegisters=2)
+		Volts = readFloat(rs485,0)
+		if Volts!=-1:
+			alive = 1
 			if numeric:
 				print('{0:.1f}'.format(Volts))
 			else:
 				print('Voltage: {0:.1f} Volts'.format(Volts))
 			if mqtt:
 					mqttclient.publish(mqtttopic+"/voltage",'%.1f' % Volts)
-
-		time.sleep(0.2)		
-		if (registerid==-1) or (registerid==54) or (register=="frequency"):
-			Frequency = rs485.read_float(54, functioncode=4, numberOfRegisters=2)
+	
+	time.sleep(0.2)		
+	if (registerid==-1) or (registerid==54) or (register=="frequency"):
+		#Frequency = rs485.read_float(54, functioncode=4, numberOfRegisters=2)
+		Frequency = readFloat(rs485,54)
+		if Frequency!=-1:
+			alive = 1
 			if numeric:
 				print('{0:.2f}'.format(Frequency))
 			else:
 				print('Frequency: {0:.2f} Hz'.format(Frequency))
 			if mqtt:
 					mqttclient.publish(mqtttopic+"/frequency",'%.2f' % Frequency)
-				
-		time.sleep(0.2)		
-		if (registerid==-1) or (registerid==8) or (register=="current"):
-			Current = rs485.read_float(8, functioncode=4, numberOfRegisters=2)
+			
+	time.sleep(0.2)		
+	if (registerid==-1) or (registerid==8) or (register=="current"):
+		#Current = rs485.read_float(8, functioncode=4, numberOfRegisters=2)
+		Current = readFloat(rs485,8)
+		if Current!=-1:
+			alive = 1
 			if numeric:
 				print('{0:.2f}'.format(Current))
 			else:
 				print('Current: {0:.2f} Amps'.format(Current))
 			if mqtt:
 					mqttclient.publish(mqtttopic+"/current",'%.2f' % Current)
-				
-		time.sleep(0.2)		
-		if (registerid==-1) or (registerid==18) or (register=="power"):
-			Active_Power = rs485.read_float(18, functioncode=4, numberOfRegisters=2)
+			
+	time.sleep(0.2)		
+	if (registerid==-1) or (registerid==18) or (register=="power"):
+		#Active_Power = rs485.read_float(18, functioncode=4, numberOfRegisters=2)
+		Active_Power = readFloat(rs485,18)
+		if Active_Power!=-1:
+			alive = 1
 			if numeric:
 				print('{0:.1f}'.format(Active_Power))
 			else:
 				print('Active power: {0:.1f} Watts'.format(Active_Power))
 			if mqtt:
 					mqttclient.publish(mqtttopic+"/power",'%.1f' % Active_Power)
-				
-		time.sleep(0.2)		
-		if (registerid==-1) or (registerid==42) or (register=="pf"):
-			Power_Factor = rs485.read_float(42, functioncode=4, numberOfRegisters=2)
+			
+	time.sleep(0.2)		
+	if (registerid==-1) or (registerid==42) or (register=="pf"):
+		#Power_Factor = rs485.read_float(42, functioncode=4, numberOfRegisters=2)
+		Power_Factor = readFloat(rs485,18)
+		if Power_Factor!=-1:
+			alive = 1
 			if numeric:
 				print('{0:.3f}'.format(Power_Factor))
 			else:
@@ -143,16 +176,8 @@ def main(argv):
 			if mqtt:
 					mqttclient.publish(mqtttopic+"/pf",'%.3f' % Power_Factor)
 
-		if mqtt:
-			mqttclient.publish(mqtttopic+"/alive","1")
+	if mqtt:
+		mqttclient.publish(mqtttopic+"/alive",alive)
 
-	except:
-		if numeric:
-			print(-1)
-		else:
-			print("Can't connect to device",address)
-		if mqtt:
-			mqttclient.publish(mqtttopic+"/alive","0")
-			
 if __name__ == "__main__":
    main(sys.argv[1:])

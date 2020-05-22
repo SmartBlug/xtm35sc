@@ -2,7 +2,7 @@
 Modbus/RS485 driver for xtm35sc energy meter with mqtt publishing option
 # Usage
 ```
-xtm35sc.py is a RS485/Modbus driver with mqtt publishing option
+xtm35sc.py is a Modbus/RS485 driver with mqtt publishing option
 xtm35sc.py version v1.0 
 
 Usage: xtm35sc.py address [-h] [-i register] [-r {voltage|frequency|current|power|pf}] [-d deviceport] [-m mqttaddress] [-p mqttport] [-t mqtttopic] [-n] [-v] 
