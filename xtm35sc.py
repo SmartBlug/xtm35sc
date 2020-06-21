@@ -9,7 +9,7 @@ from datetime import datetime
 
 mqttclient = paho.Client("xtm35sc")
 
-version = "v1.1"
+version = "v1.2"
 help = "xtm35sc.py address [-h] [-i register] [-r {voltage|frequency|current|power|pf}] [-d deviceport] [-m mqttaddress] [-p mqttport] [-P mqtttopicprefix] [-t mqtttopic] [-j] [-s] [-n] [-v] [-N name] [-w]"
 def usage():
 	#help = 'xtm35sc.py address -i <register> -r <[voltage,frequency,current,power,pf]> -d <device port> -m <mqtt addr> -p <mqtt port> -t <topic> -n -v'
@@ -25,12 +25,12 @@ def usage():
 	print("-d,--deviceport : deviceport. Default is /dev/ttyUSB0.")
 	print("-m,--mqtt       : mqtt brocker address. This enable mqtt message.")
 	print("-p,--port       : mqtt brocker port. Default is 1883")
-	print("-P,--prefix     : mqtt prefix topic. Default is \"/xtm35sc\"")
+	print("-P,--prefix     : mqtt prefix topic. Default is \"xtm35sc\"")
 	print("-t,--topic      : mqtt topic. Default is \"{PREFIX}/{ADDR}\" and \"{ADDR}\" will be replaced by device address or name if -N.")
 	print("-n,--numeric    : display only numeric results. This disable json output")
 	print("-N,--name       : add name tag to json")
 	print("-v,--verbose    : activate verbose mode.")
-	print("-w,--watchdog   : reset watchdog on topic \"{PREFIX}/{ADDR}/watchfog\".\n")
+	print("-w,--watchdog   : reset watchdog on topic \"{PREFIX}/{ADDR}/watchdog\".\n")
 
 def readFloat(rs485,addr):
 	retry = 0
@@ -53,7 +53,7 @@ def main(argv):
 	verbose = False
 	mqtt = False
 	mqttport = 1883
-	mqtttopicprefix = "/xtm35sc"
+	mqtttopicprefix = "xtm35sc"
 	mqtttopic = "{PREFIX}/{ADDR}"
 	registerid = -1
 	register = ""
