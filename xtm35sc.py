@@ -67,7 +67,7 @@ def main(argv):
 		try:
 			address = int(argv[0])
 		except:
-			print(help)
+			#print(help)
 			usage()
 			sys.exit(2)
 		
