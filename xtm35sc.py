@@ -209,7 +209,7 @@ def main(argv):
 			
 	time.sleep(0.2)		
 	if (registerid==-1) or (registerid==42) or (register=="pf"):
-		pf = '{0:.3f}'.format(readFloat(rs485,18))
+		pf = '{0:.3f}'.format(readFloat(rs485,42))
 		if pf!='-1.000':
 			alive = True
 			if numeric:
