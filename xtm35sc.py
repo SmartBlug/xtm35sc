@@ -37,7 +37,7 @@ def readFloat(rs485,addr):
 	while (retry<5):
 		retry += 1
 		try:	
-			return rs485.read_float(addr, functioncode=4, numberOfRegisters=2)
+			return rs485.read_float(addr, functioncode=4)
 		except:
 			print('retry',addr)
 			time.sleep(0.5)
