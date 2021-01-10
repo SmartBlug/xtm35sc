@@ -10,7 +10,7 @@ from datetime import datetime
 mqttclient = paho.Client("xtm35sc")
 
 version = "v1.2"
-help = "xtm35sc.py address [-h] [-i register] [-r {voltage|frequency|current|power|pf}] [-d deviceport] [-m mqttaddress] [-p mqttport] [-P mqtttopicprefix] [-t mqtttopic] [-j] [-s] [-n] [-v] [-N name] [-w]"
+help = "xtm35sc.py address [-h] [-i register] [-r {voltage|frequency|current|power|pf}] [-d deviceport] [-m mqttaddress] [-p mqttport] [-u username] [-U password] [-P mqtttopicprefix] [-t mqtttopic] [-j] [-s] [-n] [-v] [-N name] [-w]"
 def usage():
 	#help = 'xtm35sc.py address -i <register> -r <[voltage,frequency,current,power,pf]> -d <device port> -m <mqtt addr> -p <mqtt port> -t <topic> -n -v'
 	print("xtm35sc.py is a Modbus/RS485 driver for xtm35sc energy meter with mqtt publishing option")
@@ -25,6 +25,8 @@ def usage():
 	print("-d,--deviceport : deviceport. Default is /dev/ttyUSB0.")
 	print("-m,--mqtt       : mqtt brocker address. This enable mqtt message.")
 	print("-p,--port       : mqtt brocker port. Default is 1883")
+	print("-u,--username   : mqtt brocker username.")
+	print("-U,--password   : mqtt brocker password.")
 	print("-P,--prefix     : mqtt prefix topic. Default is \"xtm35sc\"")
 	print("-t,--topic      : mqtt topic. Default is \"{PREFIX}/{ADDR}\" and \"{ADDR}\" will be replaced by device address or name if -N.")
 	print("-n,--numeric    : display only numeric results. This disable json output")
@@ -36,7 +38,7 @@ def readFloat(rs485,addr):
 	retry = 0
 	while (retry<5):
 		retry += 1
-		try:	
+		try:
 			return rs485.read_float(addr, functioncode=4)
 		except:
 			print('retry',addr)
@@ -53,13 +55,15 @@ def main(argv):
 	verbose = False
 	mqtt = False
 	mqttport = 1883
+	mqttusername = ""
+	mqttpassword = ""
 	mqtttopicprefix = "xtm35sc"
 	mqtttopic = "{PREFIX}/{ADDR}"
 	registerid = -1
 	register = ""
 	name = ""
 	watchdog = False
-	
+
 	if len(argv)==0:
 		print(help)
 		sys.exit(2)
@@ -70,9 +74,9 @@ def main(argv):
 			#print(help)
 			usage()
 			sys.exit(2)
-		
+
 	try:
-		opts, args = getopt.getopt(argv[1:],"hi:r:d:P:t:m:p:njsvN:w",["help","id=","register=","deviceport=","prefix=","topic=","mqtt=","port=","numeric","json","split","verbose","name=","watchdog"])
+		opts, args = getopt.getopt(argv[1:],"hi:r:d:P:t:m:p:u:U:njsvN:w",["help","id=","register=","deviceport=","prefix=","topic=","mqtt=","port=","username=","password=","numeric","json","split","verbose","name=","watchdog"])
 	except getopt.GetoptError:
 		print(help)
 		sys.exit(2)
@@ -89,8 +93,12 @@ def main(argv):
 			mqtt = arg.lower()
 		elif opt in ("-p", "--port"):
 			mqttport = int(arg)
+		elif opt in ("-u", "--username"):
+			mqttusername = arg
+		elif opt in ("-U", "--password"):
+			mqttpassword = arg
 		elif opt in ("-P", "--prefix"):
-			mqtttopicprefix = arg			
+			mqtttopicprefix = arg
 		elif opt in ("-t", "--topic"):
 			mqtttopic = arg
 		elif opt in ("-n", "--numeric"):
@@ -108,7 +116,7 @@ def main(argv):
 		elif opt in ("-N", "--name"):
 			name = arg
 		elif opt in ("-w", "--watchdog"):
-			watchdog = True			
+			watchdog = True
 
 	try:
 		rs485 = minimalmodbus.Instrument(deviceport, address)
@@ -122,12 +130,14 @@ def main(argv):
 	except:
 		print("Can't access to dev port",deviceport)
 		sys.exit(2)
-		
+
 	try:
 		if mqtt:
 			# mqttclient = paho.Client("xtm35sc")
 			# mqttclient.on_publish = on_publish
-			mqttclient.connect(mqtt,mqttport)			
+			if mqttusername!="":
+				mqttclient.username_pw_set(username=mqttusername, password=mqttpassword)
+			mqttclient.connect(mqtt,mqttport)
 			mqtttopic = mqtttopic.replace("{PREFIX}",str(mqtttopicprefix))
 			if name:
 				mqtttopic = mqtttopic.replace("{ADDR}",name)
@@ -155,8 +165,8 @@ def main(argv):
 					mqttclient.publish(mqtttopic+"/voltage",json.dumps({ 'voltage': float(voltage) }))
 				else:
 					mqttclient.publish(mqtttopic+"/voltage",voltage)
-	
-	time.sleep(0.2)		
+
+	time.sleep(0.2)
 	if (registerid==-1) or (registerid==54) or (register=="frequency"):
 		frequency = '{0:.2f}'.format(readFloat(rs485,54))
 		if frequency!='-1.00':
@@ -172,8 +182,8 @@ def main(argv):
 					mqttclient.publish(mqtttopic+"/frequency",json.dumps({ 'frequency': float(frequency) }))
 				else:
 					mqttclient.publish(mqtttopic+"/frequency",frequency)
-			
-	time.sleep(0.2)		
+
+	time.sleep(0.2)
 	if (registerid==-1) or (registerid==8) or (register=="current"):
 		current = '{0:.2f}'.format(readFloat(rs485,8))
 		if current!='-1.00':
@@ -189,8 +199,8 @@ def main(argv):
 					mqttclient.publish(mqtttopic+"/current",json.dumps({ 'current': float(current) }))
 				else:
 					mqttclient.publish(mqtttopic+"/current",current)
-			
-	time.sleep(0.2)		
+
+	time.sleep(0.2)
 	if (registerid==-1) or (registerid==18) or (register=="power"):
 		power = '{0:.1f}'.format(readFloat(rs485,18))
 		if power!='-1.0':
@@ -206,8 +216,8 @@ def main(argv):
 					mqttclient.publish(mqtttopic+"/power",json.dumps({ 'active_power': float(power) }))
 				else:
 					mqttclient.publish(mqtttopic+"/power",power)
-			
-	time.sleep(0.2)		
+
+	time.sleep(0.2)
 	if (registerid==-1) or (registerid==42) or (register=="pf"):
 		pf = '{0:.3f}'.format(readFloat(rs485,42))
 		if pf!='-1.000':
