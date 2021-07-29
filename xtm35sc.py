@@ -29,6 +29,7 @@ def usage():
 	print("-U,--password   : mqtt brocker password.")
 	print("-P,--prefix     : mqtt prefix topic. Default is \"xtm35sc\"")
 	print("-t,--topic      : mqtt topic. Default is \"{PREFIX}/{ADDR}\" and \"{ADDR}\" will be replaced by device address or name if -N.")
+	print("-T,--title      : display title")
 	print("-n,--numeric    : display only numeric results. This disable json output")
 	print("-N,--name       : add name tag to json")
 	print("-v,--verbose    : activate verbose mode.")
@@ -53,6 +54,7 @@ def main(argv):
 	jsonOutput = True
 	split = False
 	verbose = False
+	title = False
 	mqtt = False
 	mqttport = 1883
 	mqttusername = ""
@@ -76,7 +78,7 @@ def main(argv):
 			sys.exit(2)
 
 	try:
-		opts, args = getopt.getopt(argv[1:],"hi:r:d:P:t:m:p:u:U:njsvN:w",["help","id=","register=","deviceport=","prefix=","topic=","mqtt=","port=","username=","password=","numeric","json","split","verbose","name=","watchdog"])
+		opts, args = getopt.getopt(argv[1:],"hi:r:d:P:t:m:p:u:U:njsvTN:w",["help","id=","register=","deviceport=","prefix=","topic=","mqtt=","port=","username=","password=","numeric","json","split","verbose","name=","watchdog"])
 	except getopt.GetoptError:
 		print(help)
 		sys.exit(2)
@@ -101,6 +103,8 @@ def main(argv):
 			mqtttopicprefix = arg
 		elif opt in ("-t", "--topic"):
 			mqtttopic = arg
+		elif opt in ("-T", "--title"):
+			title = True
 		elif opt in ("-n", "--numeric"):
 			numeric = True
 			jsonOutput = False
@@ -118,6 +122,8 @@ def main(argv):
 		elif opt in ("-w", "--watchdog"):
 			watchdog = True
 
+	if title:
+		print("> Getting data from device",name,"("+str(address)+")")
 	try:
 		rs485 = minimalmodbus.Instrument(deviceport, address)
 		rs485.serial.baudrate = 9600
